@@ -1,6 +1,9 @@
 /**
  * @file test.c
  * @brief ファイルの説明
+ * @details
+ *   * ファイルの説明１
+ *   * ファイルの説明２
  */
 
 #include <stdio.h>
@@ -26,8 +29,8 @@ char buffer[100];
 /**
  * メイン関数
  * @param [in] argc : 引数の個数
- * @param [in] argv : 引数文字列の配列
- * @return 0: 正常終了 1: エラー
+ * @param      argv : 引数文字列の配列
+ * @return 正常に終わったかどうかを返す
  * @retval 0: 正常終了
  * @retval 1: エラー
  * @details
