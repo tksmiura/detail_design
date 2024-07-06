@@ -1,6 +1,6 @@
 /**
  * @file test.c
- * @brief ファイルの説明
+ * @brief テストモジュール
  * @details
  *   * ファイルの説明１
  *   * ファイルの説明２
@@ -17,8 +17,8 @@ typedef unsigned int u32;
  * 構造体
  */
 struct test {
-    int x;
-    int y;
+    int x;     /**< 横 */
+    int y;     /**< 縦 */
 };
 
 /**

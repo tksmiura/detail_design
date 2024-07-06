@@ -71,6 +71,9 @@ foreach $infile (@ARGV) {
             $detail .= "$doc\n";
         } elsif ($line =~  /(\s*)\/\*\*\s*(.*)/) {     # doxygen comment
             my $dox = $2;
+            if ($dox =~ /^</) {
+                next;
+            }
 
             &output_spec($doxygen_header, $function_decl, $detail);
             $doxygen_header = "";
@@ -132,11 +135,10 @@ sub indent_width {
     return $i;
 }
 
-sub output_doxygen {
-    my ($header) = @_;
+sub output_doxygen_function {
+    my ($header, $function_decl) = @_;
     my ($brief, @param, $return, @retval, $details);
     my $section;
-    $opt_debug && print "output_doxygen [$header]\n";
     foreach $section (split("@", $header)) {
         if ($section =~ /^param\s*(.*)/) {
             push @param, $1;
@@ -160,7 +162,22 @@ sub output_doxygen {
     $opt_debug && print "return [$return]\n";
     $opt_debug && print "retval [@retval]\n";
     $opt_debug && print "details [$details]\n";
-    print OUT "## 関数概要\n\n$brief\n";
+
+    $function_decl =~ /(\w+)\s*\(/;
+    my $func_name = $1;
+    $opt_debug && print "function [$func_name]\n";
+
+    print OUT "## 関数 $func_name()\n\n$brief\n";
+
+    if ($function_decl) {
+        $function_decl =~ s/\s*\{$//s;
+
+        print OUT "### 関数定義\n\n";
+        print OUT "```c\n";
+        print OUT "$function_decl";
+        print OUT "```\n\n"
+    }
+
     if (@param) {
         print OUT "### 引数\n\n";
         print OUT "| in/out  | 引数名 | 説明 |\n";
@@ -193,20 +210,63 @@ sub output_doxygen {
     }
 }
 
+sub output_file {
+    my ($header) = @_;
+    my ($brief, $file, $details);
+    my $section;
+    $opt_debug && print "output_file [$header]\n";
+    foreach $section (split("@", $header)) {
+        if ($section =~ /^file\s*(.*)/) {
+            $file = $1;
+        } elsif($section =~ /^brief\s*(.*)/) {
+            $brief = $1;
+        } elsif($section =~ /^details\s*(.*)/s) {
+            $details .= $1;
+        } else {
+            if ($brief) {
+                $details .= $section;
+            } else {
+                $brief = $section;
+            }
+        }
+    }
+
+    $opt_debug && print "file [$file]\n";
+    $opt_debug && print "brief [$brief]\n";
+    $opt_debug && print "details [$details]\n";
+    if ($brief) {
+        print OUT "# $brief\n\n file: $file\n";
+    } else {
+        print OUT "# $file\n\n";
+    }
+    if ($details) {
+        print OUT "\n$details\n\n";
+    }
+}
+
 sub output_spec {
     my ($doxygen_header, $function_decl, $detail) = @_;
 
-    &output_doxygen($doxygen_header);
-    if ($function_decl) {
-        print OUT "## 関数定義\n";
-        print OUT "$function_decl";
+    if (!$doxygen_header && !$detail) {
+        return;
     }
-    if ($detail) {
-        print OUT "## 関数詳細\n\n";
-        foreach $d (split("\n", $detail)) {
-            $d =~ s/(\s*)(.*)/$1* $2/;
-            print OUT "$d\n"
+    $opt_debug && print "output_spec [$function_decl]\n";
+
+    if ($doxygen_header =~ /\@file/) {
+        &output_file($doxygen_header);
+    } elsif ($function_decl =~ /^struct/) {      # 構造体
+    } elsif ($function_decl =~ /^typedef/) {     # 型定義
+    } elsif ($function_decl =~ /\{$/) {          # 関数詳細
+        &output_doxygen_function($doxygen_header, $function_decl);
+        if ($detail) {
+            print OUT "### 実装仕様\n\n";
+            foreach $d (split("\n", $detail)) {
+                $d =~ s/(\s*)(.*)/$1* $2/;
+                print OUT "$d\n"
+            }
+
         }
+    } else {                                      # グローバル変数
 
     }
 }
