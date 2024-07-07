@@ -15,7 +15,8 @@ binmode STDOUT, ":utf8";
 GetOptions('markdown' => \$opt_markdown, 'debug' => \$opt_debug);
 
 
-foreach $infile (@ARGV) {
+
+foreach $infile (@ARGV) {              #各ファイルごと
     my $line;
     my $previous_indent = 0;
     my $level = 0;
@@ -31,7 +32,7 @@ foreach $infile (@ARGV) {
 
     while ($line = <FILE>) {
         chop $line;
-        if ($line =~ /(\s*)\/\*-\s*(.*)/) {     # detail design
+        if ($line =~ /(\s*)\/\*-\s*(.*)/) {     # detail design /**-
             my $indent = $1;
             my $doc = $2;
             if ($doc =~/(.*)\*\//) {
@@ -39,7 +40,7 @@ foreach $infile (@ARGV) {
                 $doc =~ s/\s+$//;
             } else {
                 my $cont_line = <FILE>;
-                while ($cont_line !~ /(.*)\*\//) {
+                while ($cont_line !~ /(.*)\*\//) {     # loop for */
                     if ($cont_line =~ /\s*\*\s*(.*)/) {
                         $doc .= $1;
                         $doc =~ s/\s+$//;
@@ -71,10 +72,11 @@ foreach $infile (@ARGV) {
             $detail .= "$doc\n";
         } elsif ($line =~  /(\s*)\/\*\*\s*(.*)/) {     # doxygen comment
             my $dox = $2;
-            if ($dox =~ /^</) {
+            if ($dox =~ /^</) {                        # ignore /**<
                 next;
             }
 
+            # output previous data
             &output_spec($doxygen_header, $function_decl, $detail);
             $doxygen_header = "";
             $function_decl = "";
@@ -89,6 +91,8 @@ foreach $infile (@ARGV) {
             $dox =~ s/\*\/\s*//;
             $opt_debug && print "($dox)\n";
             $doxygen_header = $dox;
+
+            # get code after Doxygen commmet
             $line = <FILE>;
             $line || last;
 
@@ -103,6 +107,15 @@ foreach $infile (@ARGV) {
                 $line || last;
             }
             $function_decl .= $line;
+            if ($function_decl =~ /struct/) {   # if struct, continue blank line
+                $line = <FILE>;
+                $line || last;
+                while ($line !~ /^\S*$/) {
+                    $function_decl .= $line;
+                    $line = <FILE>;
+                    $line || last;
+                }
+            }
 
             $opt_debug && print "{$function_decl}\n";
         }
