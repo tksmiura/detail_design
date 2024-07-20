@@ -9,6 +9,9 @@ use Data::Dumper;
 
 binmode STDIN,  ":utf8";
 binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
+$tab_width = 8;
 
 #options
 # -m -markdown
@@ -18,8 +21,10 @@ GetOptions('markdown' => \$opt_markdown, 'debug' => \$opt_debug);
 
 foreach $infile (@ARGV) {              #各ファイルごと
     my $line;
-    my $previous_indent = 0;
     my $level = 0;
+    my @level_indent =();
+    my $level_offset = 0;
+    my $next_level_offset = 0;
     my $detail = "";
     my $function_decl = "";
     my $doxygen_header = "";
@@ -32,7 +37,7 @@ foreach $infile (@ARGV) {              #各ファイルごと
 
     while ($line = <FILE>) {
         chop $line;
-        if ($line =~ /(\s*)\/\*-\s*(.*)/) {     # detail design /**-
+        if ($line =~ /(\s*)\/\*-\s*(.*)/) {     # detail design /*-
             my $indent = $1;
             my $doc = $2;
             if ($doc =~/(.*)\*\//) {
@@ -58,18 +63,41 @@ foreach $infile (@ARGV) {              #各ファイルごと
                 $doc =~ s/\s+$//;
             }
 
-            my $i = &indent_width($indent);
-            if ($previous_indent == 0 || $previous_indent == $i) {
-                # same level
-            } elsif ($previous_indent < $i) {
-                $level++;
-            } else {
-                $level--;
+            if ($doc =~ /^\>/) {
+                $next_level_offset = 1;
+                $doc =~ s/^\>\s*//;
+            } elsif ($doc =~ /^\<\>/) {
+                $level_offset--;
+                $next_level_offset = 1;
+                $doc =~ s/^\<\>\s*//;
+            } elsif ($doc =~ /^\</) {
+                $next_level_offset = -1;
+                $doc =~ s/^\<\s*//;
             }
-            $previous_indent = $i;
-            $doc = ("\t" x $level) . $doc;
-            $opt_debug && print "[$doc]\n";
-            $detail .= "$doc\n";
+            my $i = &indent_width($indent);
+            if (@level_indent > 0) {
+                if ($i > $level_indent[$#level_indent]) {
+                    push @level_indent, $i;
+                } else {
+                    while ($i < $level_indent[$#level_indent]) {
+                        pop @level_indent;
+                    };
+                }
+            } else {
+                push @level_indent, $i;
+            }
+            $level = $#level_indent + $level_offset;
+            if ($level < 0) {
+                print STDERR "$infile: $.: level error $line\n";
+                $level = 0;
+            }
+            if ($doc !~ /^\s*$/)  {
+                $doc = ("\t" x $level) . $doc;
+                $opt_debug && print "$i $level [$doc]\n";
+                $detail .= "$doc\n";
+            }
+            $level_offset += $next_level_offset;
+            $next_level_offset = 0;
         } elsif ($line =~  /(\s*)\/\*\*\s*(.*)/) {     # doxygen comment
             my $dox = $2;
             if ($dox =~ /^</) {                        # ignore /**<
@@ -81,6 +109,8 @@ foreach $infile (@ARGV) {              #各ファイルごと
             $doxygen_header = "";
             $function_decl = "";
             $detail = "";
+            $level_offset = 0;
+            @level_indent =();
 
             while ($dox !~ /(.*)\*\//) {
                 $cont_line = <FILE>;
@@ -125,6 +155,8 @@ foreach $infile (@ARGV) {              #各ファイルごと
     $doxygen_header = "";
     $function_decl = "";
     $detail = "";
+    $level_offset = 0;
+    @level_indent =();
 
     if ($opt_markdown) {
         close OUT;
@@ -132,16 +164,14 @@ foreach $infile (@ARGV) {              #各ファイルごと
     close FILE;
 }
 
-$tab_width = 8;
-
 sub indent_width {
     my ($pad) = @_;
     my $i = 0;
 
     foreach $c (split(//, $pad)) {
-        if ($c == " ") {
+        if ($c eq " ") {
             $i++;
-        } elsif ($c == "\t") {
+        } elsif ($c eq "\t") {
             $i += $tab_width;
         }
     }
@@ -161,6 +191,8 @@ sub output_doxygen_function {
             push @retval, $1;
         } elsif($section =~ /^details\s*(.*)/s) {
             $details .= $1;
+        } elsif($section =~ /^brief\s*(.*)/s) {
+            $brief .= $1;
         } else {
             if ($brief) {
                 $details .= $section;
@@ -200,8 +232,11 @@ sub output_doxygen_function {
             if ($p =~ s/\[(.*)\]//) {
                 $inout = $1;
             }
-            my ($v, $d) = split(":", $p);
-            print OUT "| $inout | $v | $d |\n"
+            if ($p =~ /([^:]*):(.*)/) {
+                print OUT "| $inout | $1 | $2 |\n"
+            } else {
+                print OUT "| $inout | | $p |\n"
+            }
         }
         print OUT "\n";
     }
@@ -277,7 +312,7 @@ sub output_spec {
                 $d =~ s/(\s*)(.*)/$1* $2/;
                 print OUT "$d\n"
             }
-
+            print OUT "$d\n"
         }
     } else {                                      # グローバル変数
 
