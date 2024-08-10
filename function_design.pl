@@ -137,7 +137,8 @@ foreach $infile (@ARGV) {              #各ファイルごと
                 $line || last;
             }
             $function_decl .= $line;
-            if ($function_decl =~ /struct/) {   # if struct, continue blank line
+            if ($function_decl =~ /^\s*struct/||
+                $function_decl =~ /^\s*typedef\s+struct/) {   # if struct, continue blank line
                 $line = <FILE>;
                 $line || last;
                 while ($line !~ /^\S*$/) {
