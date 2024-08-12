@@ -17,7 +17,7 @@ typedef unsigned int u32;
  * 構造体
  */
 struct test {
-    int x;     /**< 横 */
+    int x[xx];     /**< 横 */
     int y;     /**< 縦 */
 };
 
