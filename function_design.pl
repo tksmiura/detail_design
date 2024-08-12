@@ -293,6 +293,45 @@ sub output_file {
     }
 }
 
+sub output_struct {
+    my ($doxygen_header, $function_decl) = @_;
+    $opt_debug && print "output_struct [$function_decl]\n";
+
+    $doxygen_header =~ s/^\s*//;
+    $doxygen_header =~ s/\s*$//;
+
+    my $name = "";
+    my @member =();
+    foreach $d (split("\n", $function_decl)) {
+        if ($d =~/^struct\s*([^\s]*)/) {
+            $name = $1;
+            $opt_debug && print "struct $name\n";
+
+        } elsif ($d =~ /^\s*(.*)\/\*\*<\s*(.*)\*\// ) {
+            my $decl = $1;
+            my $desc = $2;
+            $decl =~ s/\s*$//;
+            $opt_debug && print "  $decl : $desc\n";
+            push @member, "| $decl | $desc |";
+        }
+    }
+
+    print OUT "## $name 構造体 \n\n$doxygen_header\n\n";
+    $function_decl =~ s/\/\*\*<.*\*\///g;
+
+    print OUT "```\n";
+    print OUT "$function_decl\n";
+    print OUT "```\n\n";
+
+    print OUT "| メンバー   | 説明 |\n";
+    print OUT "| ---------- | ---- |\n";
+
+    foreach my $m (@member) {
+        print OUT "$m\n";
+    }
+
+}
+
 sub output_spec {
     my ($doxygen_header, $function_decl, $detail) = @_;
 
@@ -304,6 +343,7 @@ sub output_spec {
     if ($doxygen_header =~ /\@file/) {
         &output_file($doxygen_header);
     } elsif ($function_decl =~ /^struct/) {      # 構造体
+        &output_struct($doxygen_header, $function_decl);
     } elsif ($function_decl =~ /^typedef/) {     # 型定義
     } elsif ($function_decl =~ /\{$/) {          # 関数詳細
         &output_doxygen_function($doxygen_header, $function_decl);
