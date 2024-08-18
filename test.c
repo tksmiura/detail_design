@@ -14,11 +14,18 @@
 typedef unsigned int u32;
 
 /**
+ * 構造体型定義
+ */
+typedef struct _x {
+    int x;         /**< 横 */
+} X;
+
+/**
  * 構造体
  */
 struct test {
     int x[xx];     /**< 横 */
-    int y;     /**< 縦 */
+    int y;         /**< 縦 */
 };
 
 /**

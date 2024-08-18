@@ -141,7 +141,7 @@ foreach $infile (@ARGV) {              #各ファイルごと
                 $function_decl =~ /^\s*typedef\s+struct/) {   # if struct, continue blank line
                 $line = <FILE>;
                 $line || last;
-                while ($line !~ /^\S*$/) {
+                while ($line !~ /^\s*$/) {
                     $function_decl .= $line;
                     $line = <FILE>;
                     $line || last;
@@ -303,7 +303,7 @@ sub output_struct {
     my $name = "";
     my @member =();
     foreach $d (split("\n", $function_decl)) {
-        if ($d =~/^struct\s*([^\s]*)/) {
+        if ($d =~/^\s*struct\s*([^\s]*)/) {
             $name = $1;
             $opt_debug && print "struct $name\n";
 
@@ -342,9 +342,11 @@ sub output_spec {
 
     if ($doxygen_header =~ /\@file/) {
         &output_file($doxygen_header);
-    } elsif ($function_decl =~ /^struct/) {      # 構造体
+    } elsif ($function_decl =~ /^\s*struct/) {      # 構造体
         &output_struct($doxygen_header, $function_decl);
-    } elsif ($function_decl =~ /^typedef/) {     # 型定義
+    } elsif ($function_decl =~ /^\s*typedef\s+struct/) {      # 構造体型
+        &output_struct($doxygen_header, $function_decl);
+    } elsif ($function_decl =~ /^\s*typedef/) {     # 型定義
     } elsif ($function_decl =~ /\{$/) {          # 関数詳細
         &output_doxygen_function($doxygen_header, $function_decl);
         if ($detail) {
