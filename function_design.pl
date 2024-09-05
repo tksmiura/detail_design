@@ -131,7 +131,7 @@ foreach $infile (@ARGV) {              #各ファイルごと
                 next;
             }
             $function_decl = "";
-            while ($line !~ /[;{]/) {
+            while ($line !~ /[;{]/ && $line !~ /^\s*$/) {
                 $function_decl .= $line;
                 $line = <FILE>;
                 $line || last;
@@ -148,9 +148,10 @@ foreach $infile (@ARGV) {              #各ファイルごと
                 }
             }
 
-            $opt_debug && print "{$function_decl}\n";
+            $opt_debug && print "*** Doxygen document\n";
+            $opt_debug && print "---\n$doxygen_header\n---\n";
+            $opt_debug && print "===\n$function_decl\n===\n";
         }
-
     }
     &output_spec($doxygen_header, $function_decl, $detail);
     $doxygen_header = "";
@@ -303,7 +304,8 @@ sub output_struct {
     my $name = "";
     my @member =();
     foreach $d (split("\n", $function_decl)) {
-        if ($d =~/^\s*struct\s*([^\s]*)/) {
+        $opt_debug && print "debug : $d\n";
+        if ($name eq "" && $d =~ /^\s*struct\s*([^\s]*)/) {
             $name = $1;
             $opt_debug && print "struct $name\n";
 
@@ -313,6 +315,9 @@ sub output_struct {
             $decl =~ s/\s*$//;
             $opt_debug && print "  $decl : $desc\n";
             push @member, "| $decl | $desc |";
+        } elsif ($d =~ /^\s*}\s+(.*);/) {
+            $name = $1;
+            $opt_debug && print "typedef $name\n";
         }
     }
 
